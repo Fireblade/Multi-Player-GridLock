@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Grid Wars</title>
+    <style>
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(60, 15px);
+            grid-template-rows: repeat(60, 15px);
+            border: 1px solid black;
+        }
+        .cell {
+            width: 15px;
+            height: 15px;
+            border: 1px solid lightgray;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+        .hq::before {
+            content: "\u2656"; /* Unicode for castle */
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <input type="text" id="playerName" placeholder="Player Name">
+    <input type="color" id="playerColor">
+    <button id="joinButton">Join</button>
+    <div id="grid"></div>
+    <div id="controls">
+        <button data-direction="up">&#8593;</button>
+        <button data-direction="down">&#8595;</button>
+        <button data-direction="left">&#8592;</button>
+        <button data-direction="right">&#8594;</button>
+        <input type="range" id="troopSlider" min="0" max="100" value="100">
+    </div>
+
+    <script>
+        const grid = document.getElementById("grid");
+        const playerNameInput = document.getElementById("playerName");
+        const playerColorInput = document.getElementById("playerColor");
+        const joinButton = document.getElementById("joinButton");
+        const controls = document.getElementById("controls");
+        const troopSlider = document.getElementById("troopSlider");
+
+        const gridSize = 60;
+        const cells = [];
+        const players = {};
+        let socket;
+        let selectedCell = null;
+
+        function createGrid() {
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.dataset.index = i;
+                cell.troops = 0;
+                cells.push(cell);
+                grid.appendChild(cell);
+                cell.addEventListener("click", () => selectCell(i));
+            }
+        }
+
+        function selectCell(index) {
+            selectedCell = index;
+        }
+
+        function updateGrid() {
+            cells.forEach((cell, index) => {
+                cell.textContent = cell.troops;
+                cell.style.backgroundColor = "white";
+                cell.classList.remove("hq");
+
+                for (const playerId in players) {
+                    const player = players[playerId];
+                    if (player.cells.includes(index)) {
+                        cell.style.backgroundColor = player.color;
+                        if(player.hq == index){
+                            cell.classList.add("hq");
+                        }
+                    }
+                }
+            });
+        }
+
+        function handleMovement(direction) {
+            if (selectedCell === null) return;
+
+            const row = Math.floor(selectedCell / gridSize);
+            const col = selectedCell % gridSize;
+            let targetRow = row;
+            let targetCol = col;
+
+            switch (direction) {
+                case "up": targetRow--; break;
+                case "down": targetRow++; break;
+                case "left": targetCol--; break;
+                case "right": targetCol++; break;
+            }
+
+            if (targetRow < 0 || targetRow >= gridSize || targetCol < 0 || targetCol >= gridSize) return;
+
+            const targetIndex = targetRow * gridSize + targetCol;
+            const troopPercentage = troopSlider.value / 100;
+            const troopsToSend = Math.floor(cells[selectedCell].troops * troopPercentage);
+            if(troopsToSend > 0){
+                socket.send(JSON.stringify({ type: "move", from: selectedCell, to: targetIndex, troops: troopsToSend }));
+            }
+        }
+
+        function initSocket() {
+            socket = new WebSocket("ws://localhost:8080"); // Replace with your server URL
+
+            socket.onopen = () => {
+                console.log("WebSocket connected");
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === "update") {
+                    players[data.playerId] = data.player;
+                    cells.forEach((cell,index) => {
+                        if(data.cellUpdates[index] !== undefined){
+                            cell.troops = data.cellUpdates[index];
+                        }
+                    });
+                    updateGrid();
+                }
+            };
+
+            socket.onclose = () => {
+                console.log("WebSocket disconnected");
+            };
+        }
+
+        joinButton.addEventListener("click", () => {
+            const playerName = playerNameInput.value;
+            const playerColor = playerColorInput.value;
+            if (playerName) {
+                socket.send(JSON.stringify({ type: "join", name: playerName, color: playerColor }));
+            }
+        });
+
+        controls.querySelectorAll("button").forEach(button => {
+            button.addEventListener("click", () => {
+                handleMovement(button.dataset.direction);
+            });
+        });
+
+        document.addEventListener("keydown", (event) => {
+            switch (event.key) {
+                case "ArrowUp": handleMovement("up"); break;
+                case "ArrowDown": handleMovement("down"); break;
+                case "ArrowLeft": handleMovement("left"); break;
+                case "ArrowRight": handleMovement("right"); break;
+            }
+        });
+
+        createGrid();
+        initSocket();
+    </script>
+</body>
+</html>

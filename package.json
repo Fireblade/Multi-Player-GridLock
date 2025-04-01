@@ -1,0 +1,8 @@
+{
+    "dependencies": {
+        "ws": "^8.0.0" // Or whatever the latest version is
+    },
+    "scripts": {
+        "start": "node server.js"
+    }
+}
