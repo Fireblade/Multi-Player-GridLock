@@ -43,19 +43,19 @@ function troopGeneration(){
     updateClients();
 }
 function troopDecay(){
-    cells.forEach((troopCount,index)=>{
-        if(troopCount > 0){
+    cells.forEach((troopCount, index) => {
+        if (troopCount > 0) {
             let owned = false;
-            for(let playerId in players){
-                if(players[playerId].cells.includes(index) && players[playerId].hq !== index){
+            for (let playerId in players) {
+                if (players[playerId].cells.includes(index) && players[playerId].hq !== index) {
                     owned = true;
+                    break; // Add break to exit loop early if cell is owned
                 }
             }
-            if(!owned){
+            if (!owned) {
                 cells[index]--;
             }
         }
-
     });
     updateClients();
 }
