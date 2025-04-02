@@ -111,7 +111,12 @@
         }
 
         function initSocket() {
-            socket = new WebSocket("ws://216.24.60.0:24"); // Replace with your server URL
+            // Get your service name from the Render dashboard
+            const serviceName = "multi-player-gridlock2";
+            const socketUrl = `wss://${serviceName}.onrender.com`;
+
+            console.log(`Attempting to connect to WebSocket at: ${socketUrl}`);
+            socket = new WebSocket(socketUrl);
 
             socket.onopen = () => {
                 console.log("WebSocket connected");

@@ -1,7 +1,7 @@
 // Node.js WebSocket server (server.js)
 const WebSocket = require("ws");
 
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: (process.env.PORT || 4000) });
 
 const gridSize = 60;
 const cells = Array(gridSize * gridSize).fill(0);
